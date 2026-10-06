@@ -1,6 +1,7 @@
 package com.givenvoice.wearable
 
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -34,6 +35,11 @@ import kotlinx.coroutines.sync.withLock
  * the ElevenLabs API. Each phrase is generated once and cached on the
  * glasses, so repeat presses play instantly and work offline. Lookup
  * order in playPhrase(): bundled asset -> cached file -> ElevenLabs API.
+ *
+ * Switch box: the ESP32 three-switch box sends BTN:1/2/3 over USB serial;
+ * SwitchInput turns those into temple gestures, so they navigate exactly
+ * like the temple. On the emulator (debug builds) the same lines come from
+ * simulation/bridge.py over TCP instead.
  */
 class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
 
@@ -48,6 +54,11 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
      * currently being prefetched, then takes the next turn. */
     private val ttsMutex = Mutex()
 
+    private val usbSwitches = UsbSerialSwitchSource(this, ::onSwitchLine)
+    private val simulatedSwitches =
+        if (BuildConfig.DEBUG && isEmulator()) TcpSwitchSource("127.0.0.1", SIMULATION_PORT, ::onSwitchLine)
+        else null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showSituationPicker()
@@ -55,6 +66,25 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
         collectTempleEvents()
         prefetchAllPhrases()
     }
+
+    override fun onResume() {
+        super.onResume()
+        usbSwitches.start()
+        simulatedSwitches?.start()
+    }
+
+    override fun onPause() {
+        usbSwitches.stop()
+        simulatedSwitches?.stop()
+        super.onPause()
+    }
+
+    private fun onSwitchLine(line: String) {
+        Log.d(TAG, "Switch box: $line")
+        SwitchInput.dispatch(line, templeActionViewModel)
+    }
+
+    private fun isEmulator(): Boolean = Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish"
 
     // ------------------------------------------------------------------
     // Screens
@@ -308,5 +338,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
 
     companion object {
         private const val TAG = "GivenVoice"
+        /** TCP port simulation/bridge.py listens on. */
+        private const val SIMULATION_PORT = 5000
     }
 }

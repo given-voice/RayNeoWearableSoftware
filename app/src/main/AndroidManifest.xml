@@ -5,6 +5,12 @@
     <!-- NEW — needed for ElevenLabs API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- ESP32 switch box over a USB-C OTG cable. Not required, so the app
+         still installs on devices (like the emulator) without USB host. -->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+
     <application
         android:name=".GivenVoiceApplication"
         android:allowBackup="true"
@@ -22,11 +28,19 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Plugging in the switch box opens the app and grants USB permission. -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
         </activity>
 
     </application>
