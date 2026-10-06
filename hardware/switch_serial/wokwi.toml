@@ -1,0 +1,9 @@
+# Wokwi simulator config for the three-switch ESP32 box.
+[wokwi]
+version = 1
+firmware = 'build/switch_serial.ino.merged.bin'
+elf = 'build/switch_serial.ino.elf'
+
+# Exposes the simulated serial port (BTN:1 / BTN:2 / BTN:3) to other programs on this PC,
+# e.g. Python: serial.serial_for_url('rfc2217://localhost:4000', baudrate=115200)
+rfc2217ServerPort = 4000

@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "..\\..",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:esp32",
+  "hardwareFolders": "C:\\Users\\Reddy\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.12,C:\\Users\\Reddy\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.12",
+  "otherLibrariesFolders": "C:\\Users\\Reddy\\Documents\\Arduino\\libraries",
+  "sketchLocation": "C:\\Users\\Reddy\\Desktop\\RayNeoWearableSoftware\\hardware\\switch_serial"
+}

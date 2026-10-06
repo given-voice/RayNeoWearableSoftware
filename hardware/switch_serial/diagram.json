@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "jenn voice program",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnTab",
+      "top": -60,
+      "left": 200,
+      "attrs": { "color": "yellow", "label": "TAB", "key": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnEnter",
+      "top": 30,
+      "left": 200,
+      "attrs": { "color": "green", "label": "ENTER", "key": "2" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnBack",
+      "top": 120,
+      "left": 200,
+      "attrs": { "color": "red", "label": "BACK", "key": "3" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "btnTab:1.l", "esp:25", "yellow", [] ],
+    [ "btnEnter:1.l", "esp:26", "green", [] ],
+    [ "btnBack:1.l", "esp:27", "red", [] ],
+    [ "btnTab:2.r", "esp:GND.2", "black", [] ],
+    [ "btnEnter:2.r", "esp:GND.2", "black", [] ],
+    [ "btnBack:2.r", "esp:GND.2", "black", [] ]
+  ],
+  "dependencies": {}
+}
