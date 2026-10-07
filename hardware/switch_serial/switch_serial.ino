@@ -3,14 +3,14 @@
 // Each button click is converted to a value and sent over USB serial, one line per click:
 //
 //   Switch        Pin      Value line   Intended meaning
-//   Yellow  TAB   GPIO25   BTN:1        next option
+//   Red     TAB   GPIO27   BTN:1        next option
 //   Green   ENTER GPIO26   BTN:2        select
-//   Red     BACK  GPIO27   BTN:3        back
+//   Yellow  BACK  GPIO25   BTN:3        back
 //
 // Connect the ESP32's USB port to the glasses' USB-C port with a USB-C OTG adapter/cable;
 // NOTE: The glasses power the ESP32 through that cable.
 
-const uint8_t PIN_TAB = 25, PIN_ENTER = 26, PIN_BACK = 27;
+const uint8_t PIN_TAB = 27, PIN_ENTER = 26, PIN_BACK = 25;
 
 // --- Tuning for the user's motor control -----------------------------------
 // A switch must stay closed this long before it counts. Filters contact bounce raise it (e.g. 150-300) to ignore brief accidental bumps ("slow keys").

@@ -1,7 +1,6 @@
 package com.givenvoice.wearable
 
 import android.media.MediaPlayer
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -38,8 +37,8 @@ import kotlinx.coroutines.sync.withLock
  *
  * Switch box: the ESP32 three-switch box sends BTN:1/2/3 over USB serial;
  * SwitchInput turns those into temple gestures, so they navigate exactly
- * like the temple. On the emulator (debug builds) the same lines come from
- * simulation/bridge.py over TCP instead.
+ * like the temple. In debug builds (emulator or glasses over adb) the same
+ * lines also come from simulation/bridge.py over TCP.
  */
 class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
 
@@ -56,7 +55,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
 
     private val usbSwitches = UsbSerialSwitchSource(this, ::onSwitchLine)
     private val simulatedSwitches =
-        if (BuildConfig.DEBUG && isEmulator()) TcpSwitchSource("127.0.0.1", SIMULATION_PORT, ::onSwitchLine)
+        if (BuildConfig.DEBUG) TcpSwitchSource("127.0.0.1", SIMULATION_PORT, ::onSwitchLine)
         else null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,8 +82,6 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
         Log.d(TAG, "Switch box: $line")
         SwitchInput.dispatch(line, templeActionViewModel)
     }
-
-    private fun isEmulator(): Boolean = Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish"
 
     // ------------------------------------------------------------------
     // Screens
