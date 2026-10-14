@@ -62,6 +62,7 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
         onButton = { button -> SwitchInput.dispatch(button, templeActionViewModel) },
         onStatus = { status -> runOnUiThread { Toast.makeText(this, status, Toast.LENGTH_LONG).show() } },
     )
+    private val phraseSender by lazy { BlePhraseSender(this) }
     private val simulatedSwitches =
         if (BuildConfig.DEBUG) TcpSwitchSource("127.0.0.1", SIMULATION_PORT, ::onSwitchLine)
         else null
@@ -77,12 +78,15 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
 
     /** The Bluetooth switch box needs the scan permission; ask once if it is missing. */
     private fun requestBluetoothScanPermission() {
-        val permission = if (android.os.Build.VERSION.SDK_INT >= 31) android.Manifest.permission.BLUETOOTH_SCAN
-        else android.Manifest.permission.ACCESS_FINE_LOCATION
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, permission) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(permission), 1)
+        val wanted = if (android.os.Build.VERSION.SDK_INT >= 31)
+            arrayOf(android.Manifest.permission.BLUETOOTH_SCAN, android.Manifest.permission.BLUETOOTH_ADVERTISE)
+        else arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        val missing = wanted.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            androidx.core.app.ActivityCompat.requestPermissions(this, missing.toTypedArray(), 1)
         }
     }
 
@@ -261,6 +265,9 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
      * a phrase in PhraseBank automatically triggers a fresh generation.
      */
     private fun playPhrase(phrase: Phrase) {
+        // Ask the ESP32 box to speak it on the Bluetooth speaker.
+        val sentToBox = phraseSender.send(phrase.id)
+        if (sentToBox && SPEAK_ON_BOX_ONLY) return
         val assetPath = "audio/${phrase.audioFile}"
         if (assetExists(assetPath)) {
             startPlayer {
@@ -375,5 +382,8 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
         private const val TAG = "GivenVoice"
         /** TCP port simulation/bridge.py listens on. */
         private const val SIMULATION_PORT = 5000
+        /** true: a selected phrase is spoken only by the ESP32's Bluetooth speaker, not the glasses.
+         *  (If the Bluetooth advertiser is unavailable the glasses still speak it themselves.) */
+        private const val SPEAK_ON_BOX_ONLY = true
     }
 }
