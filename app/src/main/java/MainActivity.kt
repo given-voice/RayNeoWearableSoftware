@@ -3,6 +3,7 @@ package com.givenvoice.wearable
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
@@ -53,7 +54,14 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
      * currently being prefetched, then takes the next turn. */
     private val ttsMutex = Mutex()
 
-    private val usbSwitches = UsbSerialSwitchSource(this, ::onSwitchLine)
+    private val usbSwitches = UsbSerialSwitchSource(this, ::onSwitchLine) { status ->
+        runOnUiThread { Toast.makeText(this, status, Toast.LENGTH_LONG).show() }
+    }
+    private val bleSwitches = BleSwitchSource(
+        this,
+        onButton = { button -> SwitchInput.dispatch(button, templeActionViewModel) },
+        onStatus = { status -> runOnUiThread { Toast.makeText(this, status, Toast.LENGTH_LONG).show() } },
+    )
     private val simulatedSwitches =
         if (BuildConfig.DEBUG) TcpSwitchSource("127.0.0.1", SIMULATION_PORT, ::onSwitchLine)
         else null
@@ -64,18 +72,48 @@ class MainActivity : BaseMirrorActivity<ActivityMainBinding>() {
         setUpUrgentButtonClick()
         collectTempleEvents()
         prefetchAllPhrases()
+        requestBluetoothScanPermission()
+    }
+
+    /** The Bluetooth switch box needs the scan permission; ask once if it is missing. */
+    private fun requestBluetoothScanPermission() {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= 31) android.Manifest.permission.BLUETOOTH_SCAN
+        else android.Manifest.permission.ACCESS_FINE_LOCATION
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, permission) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(permission), 1)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        bleSwitches.start()
     }
 
     override fun onResume() {
         super.onResume()
+        bleSwitches.start()
         usbSwitches.start()
         simulatedSwitches?.start()
     }
 
     override fun onPause() {
+        bleSwitches.stop()
         usbSwitches.stop()
         simulatedSwitches?.stop()
         super.onPause()
+    }
+
+    /** Bluetooth switch box keys. Both the press and the release are consumed so Android
+     * never applies its own meaning (Tab/Enter focus moves, Esc as Back). */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val button = SwitchInput.fromKeyCode(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            Log.d(TAG, "Switch box key: $button")
+            SwitchInput.dispatch(button, templeActionViewModel)
+        }
+        return true
     }
 
     private fun onSwitchLine(line: String) {

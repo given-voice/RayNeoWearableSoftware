@@ -14,3 +14,4 @@
 .cxx
 local.properties
 .gyst
+hardware/switch_serial/build/

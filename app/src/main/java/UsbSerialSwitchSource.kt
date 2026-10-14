@@ -24,6 +24,7 @@ import java.io.IOException
 class UsbSerialSwitchSource(
     private val context: Context,
     private val onLine: (String) -> Unit,
+    private val onStatus: (String) -> Unit = {},
 ) {
     // Lazy: the source is created as an Activity field, before its context is ready.
     private val usbManager by lazy { context.getSystemService(UsbManager::class.java) }
@@ -36,10 +37,21 @@ class UsbSerialSwitchSource(
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 ACTION_USB_PERMISSION ->
-                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) connect()
-                    else Log.w(TAG, "USB permission denied for switch box")
-                UsbManager.ACTION_USB_DEVICE_ATTACHED -> connect()
-                UsbManager.ACTION_USB_DEVICE_DETACHED -> disconnect()
+                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                        Log.i(TAG, "USB permission granted"); onStatus("USB: permission granted")
+                        connect()
+                    } else {
+                        Log.w(TAG, "USB permission denied for switch box")
+                        onStatus("USB: permission denied")
+                    }
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    Log.i(TAG, "USB device attached"); onStatus("USB: device attached")
+                    connect()
+                }
+                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    Log.i(TAG, "USB device detached")
+                    disconnect()
+                }
             }
         }
     }
@@ -51,7 +63,18 @@ class UsbSerialSwitchSource(
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
         }
         ContextCompat.registerReceiver(context, usbReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        logVisibleDevices()
         connect()
+    }
+
+    /** Lists every USB device the glasses can see. "none" means the ESP32 is not detected at all
+     * (no power, no host mode, or a bad cable/hub), as opposed to a problem inside the app. */
+    private fun logVisibleDevices() {
+        val devices = usbManager.deviceList.values.joinToString("; ") {
+            "${it.deviceName} vid=${it.vendorId} pid=${it.productId}"
+        }.ifEmpty { "none" }
+        Log.i(TAG, "USB devices visible: $devices")
+        onStatus("USB: " + (if (devices == "none") "no device seen" else devices))
     }
 
     fun stop() {
@@ -61,16 +84,26 @@ class UsbSerialSwitchSource(
 
     private fun connect() {
         if (port != null) return
-        val driver = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager).firstOrNull() ?: return
+        val driver = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager).firstOrNull()
+        if (driver == null) {
+            Log.i(TAG, "No USB serial device found (visible devices: ${usbManager.deviceList.size})")
+            return
+        }
         val device = driver.device
+        Log.i(TAG, "Found ${driver.javaClass.simpleName} vid=${device.vendorId} pid=${device.productId}")
         if (!usbManager.hasPermission(device)) {
+            Log.i(TAG, "Requesting USB permission"); onStatus("USB: requesting permission")
             // The system adds EXTRA_PERMISSION_GRANTED to this intent, so it must be mutable.
             val intent = Intent(ACTION_USB_PERMISSION).setPackage(context.packageName)
             val pi = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_MUTABLE)
             usbManager.requestPermission(device, pi)
             return
         }
-        val connection = usbManager.openDevice(device) ?: return
+        val connection = usbManager.openDevice(device)
+        if (connection == null) {
+            Log.w(TAG, "openDevice returned null for the switch box"); onStatus("USB: open failed")
+            return
+        }
         val serialPort = driver.ports[0]
         try {
             serialPort.open(connection)
@@ -82,7 +115,7 @@ class UsbSerialSwitchSource(
         }
         port = serialPort
         ioManager = SerialInputOutputManager(serialPort, listener).also { it.start() }
-        Log.i(TAG, "Switch box connected: ${driver.javaClass.simpleName}")
+        Log.i(TAG, "Switch box connected: ${driver.javaClass.simpleName}"); onStatus("USB: switch box connected")
     }
 
     private fun disconnect() {

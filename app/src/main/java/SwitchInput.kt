@@ -1,6 +1,7 @@
 package com.givenvoice.wearable
 
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.MotionEvent
 import com.ffalcon.mercury.android.sdk.touch.FlingArgs
 import com.ffalcon.mercury.android.sdk.touch.TempleAction
@@ -19,9 +20,9 @@ enum class SwitchButton { NEXT, SELECT, PREVIOUS }
  * SlideDownwards / SlideUpwards and passes anything else (a Click) to the
  * focused item:
  *
- *   BTN:1  yellow -> SlideDownwards  (highlight the next box / sentence)
- *   BTN:2  green  -> Click           (select the highlighted one)
- *   BTN:3  red    -> SlideUpwards    (highlight the previous one)
+ *   BTN:1 / Tab    red    -> SlideDownwards  (highlight the next box / sentence)
+ *   BTN:2 / Enter  green  -> Click           (select the highlighted one)
+ *   BTN:3 / Esc    yellow -> SlideUpwards    (highlight the previous one)
  */
 object SwitchInput {
 
@@ -37,18 +38,31 @@ object SwitchInput {
             else -> null
         }
 
+    /** The keys the Bluetooth switch box sends (hardware/switch_hid/switch_hid.ino). */
+    fun fromKeyCode(keyCode: Int): SwitchButton? =
+        when (keyCode) {
+            KeyEvent.KEYCODE_TAB -> SwitchButton.NEXT
+            KeyEvent.KEYCODE_ENTER -> SwitchButton.SELECT
+            KeyEvent.KEYCODE_ESCAPE -> SwitchButton.PREVIOUS
+            else -> null
+        }
+
     /** Parses [line] and, if it is a button, injects the matching gesture. */
     fun dispatch(line: String, viewModel: TempleActionViewModel) {
-        val button = parse(line) ?: return
+        dispatch(parse(line) ?: return, viewModel)
+    }
+
+    fun dispatch(button: SwitchButton, viewModel: TempleActionViewModel) {
         viewModel.userTempleAction.trySend(toTempleAction(button))
     }
 
     private fun toTempleAction(button: SwitchButton): TempleAction {
         val id = SystemClock.uptimeMillis()
         return when (button) {
-            SwitchButton.NEXT -> TempleAction.SlideDownwards(syntheticFling(down = true), false, id)
+            // Swapped after testing on the glasses: SlideDownwards moved the highlight UP the list.
+            SwitchButton.NEXT -> TempleAction.SlideUpwards(syntheticFling(down = false), false, id)
             SwitchButton.SELECT -> TempleAction.Click()
-            SwitchButton.PREVIOUS -> TempleAction.SlideUpwards(syntheticFling(down = false), false, id)
+            SwitchButton.PREVIOUS -> TempleAction.SlideDownwards(syntheticFling(down = true), false, id)
         }
     }
 

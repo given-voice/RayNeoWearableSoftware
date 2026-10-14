@@ -1,20 +1,24 @@
-// Three-switch keyboard for the RayNeo Switch Menu app (SwitchMenuActivity) over Bluetooth LE.
+// Three-switch box for the GivenVoice app on the RayNeo glasses, over Bluetooth LE.
 //
 // ESP32: Bluetooth LE keyboard (install the "ESP32 BLE Keyboard" library by T-vK), pairs straight to the glasses, no cable required.
+// Pair "GivenVoice Box" once in the glasses' Bluetooth settings; it reconnects on its own after that.
 //
 // Wiring: each switch goes between its pin and GND. Internal pull-ups are used, so no resistors are needed.
 //
-//   Switch        Key sent   ESP32 pin
-//   Yellow  TAB   TAB        GPIO25
-//   Green   ENTER ENTER      GPIO26
-//   Red     BACK  ESC        GPIO27
+//   Switch        Key sent   ESP32 pin   App action
+//   Red     TAB   TAB        GPIO27      next option
+//   Green   ENTER ENTER      GPIO26      select
+//   Yellow  BACK  ESC        GPIO25      back
 //
 // NOTE: ESP32 uses different pins because GPIO2/3/4 are strapping / serial pins there.
 
 #if defined(ARDUINO_ARCH_ESP32)
 #include <BleKeyboard.h>
-BleKeyboard Keyboard("Switch Menu Buttons", "jenn-voice", 100);
-const uint8_t PIN_TAB = 25, PIN_ENTER = 26, PIN_BACK = 27;
+BleKeyboard Keyboard("GivenVoice Box", "GivenVoice", 100);
+const uint8_t PIN_TAB = 27, PIN_ENTER = 26, PIN_BACK = 25;
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2  // the blue LED on ESP32 DevKit boards
+#endif
 #else
 #include <Keyboard.h>
 const uint8_t PIN_TAB = 2, PIN_ENTER = 3, PIN_BACK = 4;
